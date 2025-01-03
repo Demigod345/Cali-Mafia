@@ -2,11 +2,23 @@ import { ApiResponse } from '@calimero-is-near/calimero-p2p-sdk';
 
 export interface Message {
   id: String;
-  proposal_id: String;
+  // proposal_id: String;
   author: String;
   text: String;
   created_at: String;
 }
+
+export interface GetMessagesRequest {}
+
+export interface GetMessagesResponse {
+  messages: Message[];
+}
+
+export interface CreateMessageRequest {
+  message: Message;
+}
+
+export interface CreateMessageResponse {}
 
 export interface GetProposalMessagesRequest {
   // proposalId: String;
@@ -87,15 +99,19 @@ export enum ClientMethod {
   SEND_PROPOSAL_MESSAGE = 'send_proposal_messages',
   CREATE_PROPOSAL = 'create_new_proposal',
   APPROVE_PROPOSAL = 'approve_proposal',
+  GET_MESSAGES = 'get_messages',
+  CREATE_MESSAGE = 'create_message',
 }
 
 export interface ClientApi {
   //Cali Storage
+  getMessages(request: GetMessagesRequest): ApiResponse<GetMessagesResponse>;
+  CreateMessage(request: CreateMessageRequest): ApiResponse<CreateMessageResponse>;
   getProposalMessages(
     proposalsRequest: GetProposalMessagesRequest,
   ): ApiResponse<GetProposalMessagesResponse>;
   sendProposalMessage(
-    sendMessageRequest: SendProposalMessageRequest,
+    CreateMessageRequest: SendProposalMessageRequest,
   ): ApiResponse<SendProposalMessageResponse>;
   createProposal(
     request: CreateProposalRequest,

@@ -10,7 +10,7 @@ import { getNodeUrl } from './utils/node';
 export default function App() {
   return (
     <AccessTokenWrapper getNodeUrl={getNodeUrl}>
-      <BrowserRouter >
+      <BrowserRouter>
         <Routes>
           <Route path="/" element={<SetupPage />} />
           <Route path="/auth" element={<Authenticate />} />

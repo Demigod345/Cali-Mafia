@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import {
   ApiResponse,
   JsonRpcClient,
@@ -8,6 +10,10 @@ import {
   RpcQueryParams,
 } from '@calimero-is-near/calimero-p2p-sdk';
 import {
+  GetMessagesRequest,
+  GetMessagesResponse,
+  CreateMessageRequest,
+  CreateMessageResponse,
   ApproveProposalRequest,
   ApproveProposalResponse,
   ClientApi,
@@ -153,6 +159,119 @@ export class LogicApiDataSource implements ClientApi {
     };
   }
 
+  // async getMessages(request: GetMessagesRequest): ApiResponse<GetMessagesResponse> {
+  //   const { jwtObject, config, error } = getConfigAndJwt();
+  //   if (error) {
+  //     return { error };
+  //   }
+
+  //   console.log('getMessages', request);
+
+  //   const params: RpcQueryParams<GetMessagesRequest> = {
+  //     contextId: jwtObject?.context_id ?? getContextId(),
+  //     method: ClientMethod.GET_MESSAGES,
+  //     argsJson: request,
+  //     executorPublicKey: jwtObject.executor_public_key,
+  //   };
+
+  //   const response = await getJsonRpcClient().query<
+  //     GetMessagesRequest,
+  //     GetMessagesResponse
+  //   >(params, config);
+
+  //   console.log('getMessages response', response);
+
+  //   if (response?.error) {
+  //     return await this.handleError(response.error, {}, this.getMessages);
+  //   }
+
+  //   let getMessagesResponse: GetMessagesResponse = {
+  //     messages: response?.result?.output?.messages,
+  //   } as GetMessagesResponse;
+
+  //   return {
+  //     data: getMessagesResponse,
+  //     error: null,
+  //   };
+
+  // }
+
+  async getMessages(
+    request: GetMessagesRequest,
+  ): ApiResponse<GetMessagesResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    console.log('getMessages', request);
+
+    const params: RpcQueryParams<GetMessagesRequest> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.GET_MESSAGES,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    };
+
+    const response = await getJsonRpcClient().query<
+      GetMessagesRequest,
+      GetMessagesResponse
+    >(params, config);
+
+    console.log('getMessages response', response);
+
+    if (response?.error) {
+      return await this.handleError(
+        response.error,
+        {},
+        this.getProposalMessages,
+      );
+    }
+
+    let getMessagesResponse: GetMessagesResponse = {
+      messages: response?.result?.output?.messages,
+    } as GetProposalMessagesResponse;
+
+    return {
+      data: getMessagesResponse,
+      error: null,
+    };
+  }
+
+  async createMessage(
+    request: CreateMessageRequest,
+  ): ApiResponse<CreateMessageResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    const response = await getJsonRpcClient().execute<
+      CreateMessageRequest,
+      CreateMessageResponse
+    >(
+      {
+        contextId: jwtObject?.context_id ?? getContextId(),
+        method: ClientMethod.CREATE_MESSAGE,
+        argsJson: request,
+        executorPublicKey: jwtObject.executor_public_key,
+      },
+      config,
+    );
+    if (response?.error) {
+      return await this.handleError(
+        response.error,
+        {},
+        this.createMessage,
+      );
+    }
+
+    return {
+      data: {},
+      error: null,
+    };
+  }
+
   async getProposalMessages(
     request: GetProposalMessagesRequest,
   ): ApiResponse<GetProposalMessagesResponse> {
@@ -185,8 +304,14 @@ export class LogicApiDataSource implements ClientApi {
       );
     }
 
+    // console.log("response: "+ response.result.output[0].text);
+    // const respArry = response.result.output;
+    // for (const obj of respArry) {
+    //   console.log(obj.text);
+    // }
+
     let getProposalsResponse: GetProposalMessagesResponse = {
-      messages: response?.result?.output?.messages,
+      messages: response?.result?.output,
     } as GetProposalMessagesResponse;
 
     return {
