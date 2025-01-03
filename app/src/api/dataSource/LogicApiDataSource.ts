@@ -24,6 +24,18 @@ import {
   GetProposalMessagesResponse,
   SendProposalMessageRequest,
   SendProposalMessageResponse,
+  StorePlayersRequest,
+  StorePlayersResponse,
+  GetPlayersRequest,
+  GetPlayersResponse,
+  AssignRoleRequest,
+  AssignRoleResponse,
+  GetPlayerNonceRequest,
+  GetPlayerNonceResponse,
+  SetGameStateRequest,
+  SetGameStateResponse,
+  GetGameStateRequest,
+  GetGameStateResponse,
 } from '../clientApi';
 import { getContextId, getNodeUrl } from '../../utils/node';
 import {
@@ -70,6 +82,218 @@ export function getConfigAndJwt() {
 }
 
 export class LogicApiDataSource implements ClientApi {
+  async storePlayers(
+    request: StorePlayersRequest,
+  ): ApiResponse<StorePlayersResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    console.log('Creating action with request:', request);
+
+    const params: RpcQueryParams<typeof request> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.STORE_PLAYERS,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    };
+
+    console.log('RPC params:', params);
+
+    const response = await getJsonRpcClient().execute<
+      typeof request,
+      StorePlayersResponse
+    >(params, config);
+
+    console.log('Raw response:', response);
+
+    if (response?.error) {
+      console.error('RPC error:', response.error);
+      return await this.handleError(response.error, {}, this.createAction);
+    }
+
+    return {
+      data: response.result.output as StorePlayersResponse,
+      error: null,
+    };
+  }
+
+  async getPlayers(
+    request: GetPlayersRequest,
+  ): ApiResponse<GetPlayersResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    const params: RpcQueryParams<typeof request> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.GET_PLAYERS,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    };
+
+    console.log('RPC params:', params);
+
+    const response = await getJsonRpcClient().execute<
+      typeof request,
+      GetPlayersResponse
+    >(params, config);
+
+    console.log('Raw response:', response);
+
+    if (response?.error) {
+      console.error('RPC error:', response.error);
+      return await this.handleError(response.error, {}, this.createAction);
+    }
+
+    return {
+      data: response.result.output as GetPlayersResponse,
+      error: null,
+    };
+  }
+
+  async assignRole(
+    request: AssignRoleRequest,
+  ): ApiResponse<AssignRoleResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    const params: RpcQueryParams<typeof request> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.ASSIGN_ROLE,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    };
+
+    console.log('RPC params:', params);
+
+    const response = await getJsonRpcClient().execute<
+      typeof request,
+      AssignRoleResponse
+    >(params, config);
+
+    console.log('Raw response:', response);
+
+    if (response?.error) {
+      console.error('RPC error:', response.error);
+      return await this.handleError(response.error, {}, this.createAction);
+    }
+
+    return {
+      data: response.result.output as AssignRoleResponse,
+      error: null,
+    };
+  }
+
+  async getPlayerNonce(
+    request: GetPlayerNonceRequest,
+  ): ApiResponse<GetPlayerNonceResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    const params: RpcQueryParams<typeof request> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.GET_PLAYER_NONCE,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    };
+
+    console.log('RPC params:', params);
+
+    const response = await getJsonRpcClient().execute<
+      typeof request,
+      GetPlayerNonceResponse
+    >(params, config);
+
+    console.log('Raw response:', response);
+
+    if (response?.error) {
+      console.error('RPC error:', response.error);
+      return await this.handleError(response.error, {}, this.createAction);
+    }
+
+    return {
+      data: response.result.output as GetPlayerNonceResponse,
+      error: null,
+    };
+  }
+
+  async getGameState(
+    request: GetGameStateRequest,
+  ): ApiResponse<GetGameStateResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    const params: RpcQueryParams<typeof request> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.GET_GAME_STATE,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    };
+
+    console.log('RPC params:', params);
+
+    const response = await getJsonRpcClient().execute<
+      typeof request,
+      GetGameStateResponse
+    >(params, config);
+
+    console.log('Raw response:', response);
+
+    if (response?.error) {
+      console.error('RPC error:', response.error);
+      return await this.handleError(response.error, {}, this.createAction);
+    }
+
+    return {
+      data: response.result.output as GetGameStateResponse,
+      error: null,
+    };
+  }
+
+  async setGameState(
+    request: SetGameStateRequest,
+  ): ApiResponse<SetGameStateResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    const params: RpcQueryParams<typeof request> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.SET_GAME_STATE,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    };
+
+    console.log('RPC params:', params);
+
+    const response = await getJsonRpcClient().execute<
+      typeof request,
+      SetGameStateResponse
+    >(params, config);
+
+    console.log('Raw response:', response);
+
+    if (response?.error) {
+      console.error('RPC error:', response.error);
+      return await this.handleError(response.error, {}, this.createAction);
+    }
+
+    return {
+      data: response.result.output as SetGameStateResponse,
+      error: null,
+    };
+  }
+
   async createProposal(
     request: CreateProposalRequest,
   ): ApiResponse<CreateProposalResponse> {
@@ -259,11 +483,7 @@ export class LogicApiDataSource implements ClientApi {
       config,
     );
     if (response?.error) {
-      return await this.handleError(
-        response.error,
-        {},
-        this.createMessage,
-      );
+      return await this.handleError(response.error, {}, this.createMessage);
     }
 
     return {

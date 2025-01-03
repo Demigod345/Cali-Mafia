@@ -4,12 +4,15 @@ use calimero_sdk::serde::{Deserialize, Serialize};
 use calimero_sdk::types::Error;
 use calimero_sdk::{app, env};
 use calimero_storage::collections::{UnorderedMap, Vector};
+use serde_json::Number;
 
 #[app::state(emits = Event)]
 #[derive(Debug, PartialEq, PartialOrd, BorshSerialize, BorshDeserialize)]
 #[borsh(crate = "calimero_sdk::borsh")]
 pub struct AppState {
     messages: UnorderedMap<ProposalId, Vector<Message>>,
+    players: Vec<Player>,
+    game_state: GameState,
 }
 
 #[derive(
@@ -23,6 +26,39 @@ pub struct Message {
     author: String,
     text: String,
     created_at: String,
+}
+
+#[derive(
+    Clone, Debug, PartialEq, PartialOrd, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
+)]
+#[borsh(crate = "calimero_sdk::borsh")]
+#[serde(crate = "calimero_sdk::serde")]
+pub struct Player {
+    name: String,
+    is_active: bool,
+    address: String,
+    role: String,
+    nonce: usize,
+    is_moderator: bool,
+    public_identity_key: String,
+}
+
+#[derive(
+    Clone, Debug, PartialEq, PartialOrd, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
+)]
+#[borsh(crate = "calimero_sdk::borsh")]
+#[serde(crate = "calimero_sdk::serde")]
+pub struct GameState {
+    current_phase: u32,
+    player_count: u32,
+    current_day: u32,
+    moderator: String,
+    is_moderator_chosen: bool,
+    mafia_count: u32,
+    villager_count: u32,
+    moderator_count: u32,
+    active_mafia_count: u32,
+    active_villager_count: u32,
 }
 
 #[app::event]
@@ -44,7 +80,66 @@ impl AppState {
     pub fn init() -> AppState {
         AppState {
             messages: UnorderedMap::new(),
+            players: Vec::new(),
+            game_state: GameState {
+                current_phase: 0,
+                player_count: 0,
+                current_day: 0,
+                moderator: "".to_string(),
+                is_moderator_chosen: false,
+                mafia_count: 0,
+                villager_count: 0,
+                moderator_count: 0,
+                active_mafia_count: 0,
+                active_villager_count: 0,
+            },
         }
+    }
+
+    pub fn store_players(&mut self, players: Vec<Player>) -> Result<(), Error> {
+        self.players = players;
+        Ok(())
+    }
+
+    // for testing
+    pub fn get_players(&self) -> Result<Vec<Player>, Error> {
+        Ok(self.players.clone())
+    }
+
+    pub fn assign_role_and_nonce(
+        &mut self,
+        address: String,
+        role: String,
+        nonce: usize,
+    ) -> Result<(), Error> {
+        let player_index = self
+            .players
+            .iter()
+            .position(|p| p.address == address)
+            .ok_or(Error::msg("Player not found"))?;
+
+        self.players[player_index].role = role;
+        self.players[player_index].nonce = nonce;
+        Ok(())
+    }
+
+    pub fn get_player_nonce(&self, address: String) -> Result<usize, Error> {
+        let player_index = self
+            .players
+            .iter()
+            .position(|p| p.address == address)
+            .ok_or(Error::msg("Player not found"))?;
+
+        Ok(self.players[player_index].nonce)
+    }
+
+    pub fn set_game_state(&mut self, game_state: GameState) -> Result<(), Error> {
+        self.game_state = game_state;
+        Ok(())
+    }
+
+    pub fn get_game_state(&self) -> Result<GameState, Error> {
+        Ok(self.game_state.clone())
     }
 
     pub fn create_new_proposal(

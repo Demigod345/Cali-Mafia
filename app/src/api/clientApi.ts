@@ -2,10 +2,72 @@ import { ApiResponse } from '@calimero-is-near/calimero-p2p-sdk';
 
 export interface Message {
   id: String;
-  // proposal_id: String;
+  proposal_id: String;
   author: String;
   text: String;
   created_at: String;
+}
+
+export interface Player {
+  name: String;
+  is_active: Boolean;
+  address: String;
+  role: String;
+  nonce: Number;
+  is_moderator: Boolean;
+}
+
+export interface GameState {
+  current_phase: number;
+  player_count: number;
+  current_day: number;
+  moderator: String;
+  is_moderator_chosen: Boolean;
+  mafia_count: number;
+  villager_count: number;
+  moderator_count: number;
+  active_mafia_count: number;
+  active_villager_count: number;
+}
+
+export interface StorePlayersRequest {
+  players: Player[];
+}
+
+export interface StorePlayersResponse {}
+
+export interface GetPlayersRequest {}
+
+export interface GetPlayersResponse {
+  players: Player[];
+}
+
+export interface AssignRoleRequest {
+  address: String;
+  role: String;
+  nonce: Number;
+}
+
+export interface AssignRoleResponse {}
+
+export interface GetPlayerNonceRequest {
+  address: String;
+}
+
+export interface GetPlayerNonceResponse {
+  nonce: Number;
+}
+
+export interface SetGameStateRequest {
+  game_state: GameState;
+}
+
+export interface SetGameStateResponse {}
+
+export interface GetGameStateRequest {}
+
+export interface GetGameStateResponse {
+  game_state: GameState;
 }
 
 export interface GetMessagesRequest {}
@@ -101,12 +163,20 @@ export enum ClientMethod {
   APPROVE_PROPOSAL = 'approve_proposal',
   GET_MESSAGES = 'get_messages',
   CREATE_MESSAGE = 'create_message',
+  STORE_PLAYERS = 'store_players',
+  GET_PLAYERS = 'get_players',
+  ASSIGN_ROLE = 'assign_role_and_nonce',
+  GET_PLAYER_NONCE = 'get_player_nonce',
+  SET_GAME_STATE = 'set_game_state',
+  GET_GAME_STATE = 'get_game_state',
 }
 
 export interface ClientApi {
   //Cali Storage
   getMessages(request: GetMessagesRequest): ApiResponse<GetMessagesResponse>;
-  CreateMessage(request: CreateMessageRequest): ApiResponse<CreateMessageResponse>;
+  CreateMessage(
+    request: CreateMessageRequest,
+  ): ApiResponse<CreateMessageResponse>;
   getProposalMessages(
     proposalsRequest: GetProposalMessagesRequest,
   ): ApiResponse<GetProposalMessagesResponse>;
