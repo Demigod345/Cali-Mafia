@@ -1,8 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { theme } from '../../styles/theme';
 import { Message } from '../../types';
+import { Button, Input, Form } from './StyledComponents';
+import { MessageCircle } from 'lucide-react';
 
 const ChatAreaWrapper = styled(motion.div)`
   background: linear-gradient(
@@ -14,10 +16,20 @@ const ChatAreaWrapper = styled(motion.div)`
   border: 1px solid ${theme.colors.primary};
   border-radius: 0.5rem;
   padding: 1.5rem;
-  margin-bottom: 1rem;
-  height: 20rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+
+  @media (max-width: 768px) {
+    height: 400px;
+  }
+`;
+
+const MessagesContainer = styled.div`
   overflow-y: auto;
-  animation: ${(props) => props.theme.glowAnimation} 3s infinite;
+  flex-grow: 1;
+  margin-bottom: 1rem;
 
   &::-webkit-scrollbar {
     width: 8px;
@@ -33,6 +45,11 @@ const ChatAreaWrapper = styled(motion.div)`
   }
 `;
 
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
 const ChatMessage = styled(motion.div)<{ is_moderator: boolean }>`
   margin-bottom: 0.75rem;
   padding: 1rem;
@@ -43,28 +60,50 @@ const ChatMessage = styled(motion.div)<{ is_moderator: boolean }>`
   border: 1px solid ${theme.colors.primary};
   border-radius: 0.5rem;
   font-size: 0.875rem;
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: translateX(5px);
-  }
+  animation: ${fadeIn} 0.3s ease-out;
 `;
 
 interface ChatAreaProps {
   messages: Message[];
+  newMessage: string;
+  setNewMessage: (message: string) => void;
+  sendMessage: (e: React.FormEvent) => void;
 }
 
-const ChatArea: React.FC<ChatAreaProps> = ({ messages }) => {
+const ChatArea: React.FC<ChatAreaProps> = ({
+  messages,
+  newMessage,
+  setNewMessage,
+  sendMessage,
+}) => {
   return (
     <ChatAreaWrapper initial="hidden" animate="visible">
-      {messages.map((message) => (
-        <ChatMessage
-          key={message.id}
-          is_moderator={message.author === 'Moderator'}
+      <MessagesContainer>
+        {messages.map((message) => (
+          <ChatMessage
+            key={message.id}
+            is_moderator={message.author === 'Moderator'}
+          >
+            <strong>{message.author}:</strong> {message.text}
+          </ChatMessage>
+        ))}
+      </MessagesContainer>
+      <Form onSubmit={sendMessage}>
+        <Input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Type your message..."
+        />
+        <Button
+          type="submit"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         >
-          <strong>{message.author}:</strong> {message.text}
-        </ChatMessage>
-      ))}
+          <MessageCircle />
+          Send
+        </Button>
+      </Form>
     </ChatAreaWrapper>
   );
 };
