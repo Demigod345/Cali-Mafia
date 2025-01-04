@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import styled, { keyframes } from 'styled-components';
 import { theme } from '../../styles/theme';
 import { Message } from '../../types';
-import { Button, Input, Form } from './StyledComponents';
 import { MessageCircle } from 'lucide-react';
 
 const ChatAreaWrapper = styled(motion.div)`
@@ -16,14 +15,9 @@ const ChatAreaWrapper = styled(motion.div)`
   border: 1px solid ${theme.colors.primary};
   border-radius: 0.5rem;
   padding: 1.5rem;
-  height: 100%;
+  height: 600px;
   display: flex;
   flex-direction: column;
-  flex: 1;
-
-  @media (max-width: 768px) {
-    height: 400px;
-  }
 `;
 
 const MessagesContainer = styled.div`
@@ -63,6 +57,32 @@ const ChatMessage = styled(motion.div)<{ is_moderator: boolean }>`
   animation: ${fadeIn} 0.3s ease-out;
 `;
 
+const Form = styled.form`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const Input = styled.input`
+  flex-grow: 1;
+  padding: 0.5rem;
+  border: 1px solid ${theme.colors.primary};
+  border-radius: 0.25rem;
+  background: ${theme.colors.dark};
+  color: ${theme.colors.primary};
+`;
+
+const Button = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: ${theme.colors.primary};
+  color: ${theme.colors.dark};
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+`;
+
 interface ChatAreaProps {
   messages: Message[];
   newMessage: string;
@@ -76,17 +96,37 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   setNewMessage,
   sendMessage,
 }) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Sort messages by created_at
+  const sortedMessages = [...messages].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+
   return (
     <ChatAreaWrapper initial="hidden" animate="visible">
       <MessagesContainer>
-        {messages.map((message) => (
+        {sortedMessages.map((message) => (
           <ChatMessage
             key={message.id}
             is_moderator={message.author === 'Moderator'}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
           >
             <strong>{message.author}:</strong> {message.text}
           </ChatMessage>
         ))}
+        <div ref={messagesEndRef} />
       </MessagesContainer>
       <Form onSubmit={sendMessage}>
         <Input
@@ -100,7 +140,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          <MessageCircle />
+          <MessageCircle size={16} />
           Send
         </Button>
       </Form>

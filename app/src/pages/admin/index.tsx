@@ -58,6 +58,8 @@ import {
   PHASE_NIGHT,
   PHASE_DAY,
   getPhaseName,
+  getRoleName,
+  ROLE_MAFIA,
 } from '../../utils/gameUtils';
 import { Player, GameState, Message } from '../../types';
 
@@ -135,10 +137,17 @@ const ModeratorMafiaPortal: React.FC = () => {
         const gameStateResponse = await contract.get_game_state(gameId);
         console.log('Game state:', gameStateResponse);
         setCurrentPhase(Number(gameStateResponse.current_phase));
+        // setCurrentPhase(PHASE_ROLE_ASSIGNMENT);
         setGameState(gameStateResponse);
 
         if (gameStateResponse.ended) {
-          // const winnerResponse = await contract.
+          const winnerResponse = await contract.check_winner(gameId);
+          // console.log('Winner:', winnerResponse);
+          if (Number(winnerResponse) == 1) {
+            setWinner('Villagers');
+          } else {
+            setWinner('Mafia');
+          }
         }
       }
     } catch (error) {
@@ -214,15 +223,19 @@ const ModeratorMafiaPortal: React.FC = () => {
     }
   };
 
-  const assignRole = async (playerAddress: String, role: number) => {
+  const assignRole = async (
+    playerAddress: String,
+    role: number,
+    invitationCode: String,
+  ) => {
     console.log('Assigning role to player', playerAddress, getRoleName(role));
 
     await toast.promise(
       (async () => {
         // a
         const contract = await getContract();
-        // const nonce = Math.floor(Math.random() * 10) + 1;
-        const nonce = 1;
+        const nonce = Math.floor(Math.random() * 10) + 1;
+        // const nonce = 1;
 
         const commitment = await contract.get_role_commitment_hash(
           gameId,
@@ -240,7 +253,7 @@ const ModeratorMafiaPortal: React.FC = () => {
               player: playerAddress,
               commitment: commitment,
               mafia_count: 1,
-              villager_count: 2,
+              villager_count: 3,
             }),
           },
         ]);
@@ -250,6 +263,18 @@ const ModeratorMafiaPortal: React.FC = () => {
           role: role.toString(),
           nonce: nonce,
         });
+        if (role == ROLE_MAFIA) {
+          fetch('http://localhost:3000/api/mod', {
+            method: 'POST',
+            body: JSON.stringify({
+              game_id: gameId,
+              invitation_payload: invitationCode,
+            }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+        }
 
         const response = await fetch('http://localhost:3000/api/events', {
           method: 'POST',
@@ -280,7 +305,7 @@ const ModeratorMafiaPortal: React.FC = () => {
   async function eliminatePlayer(playerAddress: String) {
     await toast.promise(
       (async () => {
-        await fetchGameData();
+        // await fetchGameData();
 
         const call = await connection.execute([
           {
@@ -460,7 +485,7 @@ const ModeratorMafiaPortal: React.FC = () => {
         fetchGameData();
         fetchPlayers();
         fetchProposalMessages();
-      }, 5000);
+      }, 10000);
 
       return () => clearInterval(intervalId);
     }
@@ -544,6 +569,8 @@ const ModeratorMafiaPortal: React.FC = () => {
                 Join Game
               </Button>
             </Form>
+          ) : winner ? (
+            <FinalScreen winner={winner} />
           ) : (
             <motion.div variants={containerVariants}>
               <PhaseIndicator variants={itemVariants}>
