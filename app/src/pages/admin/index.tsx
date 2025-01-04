@@ -22,6 +22,7 @@ import {
   RpcProvider,
   Contract,
   WalletAccount,
+  CallData,
   num,
   shortString,
 } from 'starknet';
@@ -33,22 +34,15 @@ import { LogicApiDataSource } from '../../api/dataSource/LogicApiDataSource';
 import {
   AssignRoleRequest,
   AssignRoleResponse,
-  GetGameStateRequest,
-  GetGameStateResponse,
   GetPlayerNonceRequest,
   GetPlayerNonceResponse,
-  GetPlayersRequest,
-  GetPlayersResponse,
   GetProposalMessagesRequest,
   GetProposalMessagesResponse,
   SendProposalMessageRequest,
   SendProposalMessageResponse,
-  SetGameStateRequest,
-  SetGameStateResponse,
-  StorePlayersRequest,
-  StorePlayersResponse,
 } from '../../api/clientApi';
 import { ResponseData } from '@calimero-is-near/calimero-p2p-sdk';
+import { twoFeltToString } from '../../utils/starknet';
 
 // Enhanced theme with gradients and shadows
 const theme = {
@@ -202,8 +196,7 @@ const PlayerList = styled(motion.div)`
 `;
 
 const PlayerListItem = styled(motion.div)<{
-  isAlive: boolean;
-  isMafia: boolean;
+  is_active: boolean;
 }>`
   display: flex;
   align-items: center;
@@ -211,15 +204,10 @@ const PlayerListItem = styled(motion.div)<{
   margin-bottom: 0.5rem;
   padding: 1rem;
   background: ${theme.colors.dark};
-  border: 1px solid
-    ${(props) => (props.isMafia ? theme.colors.danger : theme.colors.primary)};
+  border: 1px solid ${theme.colors.primary};
   border-radius: 0.5rem;
   color: ${(props) =>
-    props.isAlive
-      ? props.isMafia
-        ? theme.colors.danger
-        : theme.colors.primary
-      : theme.colors.gray};
+    props.is_active ? theme.colors.primary : theme.colors.gray};
   transition: all 0.3s ease;
 
   &:hover {
@@ -256,13 +244,13 @@ const ChatArea = styled(motion.div)`
   }
 `;
 
-const ChatMessage = styled(motion.div)<{ isModerator: boolean }>`
+const ChatMessage = styled(motion.div)<{ is_moderator: boolean }>`
   margin-bottom: 0.75rem;
   padding: 1rem;
   background: ${(props) =>
-    props.isModerator ? theme.colors.primary : theme.colors.dark};
+    props.is_moderator ? theme.colors.primary : theme.colors.dark};
   color: ${(props) =>
-    props.isModerator ? theme.colors.dark : theme.colors.primary};
+    props.is_moderator ? theme.colors.dark : theme.colors.primary};
   border: 1px solid ${theme.colors.primary};
   border-radius: 0.5rem;
   font-size: 0.875rem;
@@ -327,18 +315,21 @@ const PlayerStatus = styled.div`
 
 type Player = {
   name: String;
-  is_active: boolean;
   address: String;
-  role: String;
-  nonce: number;
+  public_identity_key: String;
   is_moderator: boolean;
+  is_active: boolean;
+  revealed_role: number;
 };
 
 type GameState = {
+  created: boolean;
+  started: boolean;
+  ended: boolean;
   current_phase: number;
   player_count: number;
   current_day: number;
-  moderator: string;
+  moderator: String;
   is_moderator_chosen: boolean;
   mafia_count: number;
   villager_count: number;
@@ -347,55 +338,63 @@ type GameState = {
   active_villager_count: number;
 };
 
-type GamePhase = 'Role Assignment' | 'Night' | 'Day';
-
 type Message = {
-  id: string;
-  proposal_id: string;
-  author: string;
-  text: string;
-  created_at: string;
+  id: String;
+  proposal_id: String;
+  author: String;
+  text: String;
+  created_at: String;
+};
+
+const PHASE_ROLE_ASSIGNMENT = 3;
+const PHASE_NIGHT = 4;
+const PHASE_DAY = 5;
+
+const ROLE_UNASSIGNED = 0;
+const ROLE_VILLAGER = 1;
+const ROLE_MAFIA = 2;
+
+const getRoleName = (role: number) => {
+  switch (role) {
+    case ROLE_VILLAGER:
+      return 'Villager';
+    case ROLE_MAFIA:
+      return 'Mafia';
+    default:
+      return 'Unassigned';
+  }
+};
+
+const getPhaseName = (phase: number) => {
+  switch (phase) {
+    case PHASE_ROLE_ASSIGNMENT:
+      return 'Role Assignment';
+    case PHASE_NIGHT:
+      return 'Night';
+    case PHASE_DAY:
+      return 'Day';
+    default:
+      return 'Unknown';
+  }
 };
 
 const ModeratorMafiaPortal: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
-  const [currentPhase, setCurrentPhase] =
-    useState<GamePhase>('Role Assignment');
+  const [currentPhase, setCurrentPhase] = useState(PHASE_ROLE_ASSIGNMENT);
+  const [gameState, setGameState] = useState(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [connection, setConnection] = useState<WalletAccount | null>(null);
   const [address, setAddress] = useState('');
-  const [gameId, setGameId] = useState<string | null>(null);
+  const [gameId, setGameId] = useState<String | null>(null);
   const [gameIdEntered, setGameIdEntered] = useState(false);
   const [mafiaContract, setMafiaContract] = useState<Contract | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<String | null>(null);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
 
   // Calimero rpc calls written here ========================================
 
-  async function storePlayers(request: StorePlayersRequest) {
-    const result: ResponseData<StorePlayersResponse> =
-      await new LogicApiDataSource().storePlayers(request);
-
-    if (result.error) {
-      console.error('Error creating action', result.error);
-    }
-
-    console.log('Players are stored to the state', result.data);
-  }
-
-  async function getPlayers(request: GetPlayersRequest) {
-    const result: ResponseData<GetPlayersResponse> =
-      await new LogicApiDataSource().getPlayers(request);
-
-    if (result.error) {
-      console.error('Error creating action', result.error);
-    }
-
-    console.log('Players recieved from the state are', result.data);
-  }
-
-  async function AssignRole(request: AssignRoleRequest) {
+  async function storePlayerRoleNonce(request: AssignRoleRequest) {
     const result: ResponseData<AssignRoleResponse> =
       await new LogicApiDataSource().assignRole(request);
 
@@ -407,7 +406,7 @@ const ModeratorMafiaPortal: React.FC = () => {
     // Yaha result which comes back is null only, if it is error it will be caught in the if condition
   }
 
-  async function getPlayerNonce(request: GetPlayerNonceRequest) {
+  async function getPlayerRoleNonce(request: GetPlayerNonceRequest) {
     const result: ResponseData<GetPlayerNonceResponse> =
       await new LogicApiDataSource().getPlayerNonce(request);
 
@@ -416,38 +415,8 @@ const ModeratorMafiaPortal: React.FC = () => {
     }
 
     console.log('Player nonce is', result.data);
+    return result.data;
   }
-
-  async function setGameState(request: SetGameStateRequest) {
-    const result: ResponseData<SetGameStateResponse> =
-      await new LogicApiDataSource().setGameState(request);
-
-    if (result.error) {
-      console.error('Error creating action', result.error);
-    }
-
-    console.log('Game state set', result.data);
-  }
-
-  async function getGameState(request: GetGameStateRequest) {
-    const result: ResponseData<GetGameStateResponse> =
-      await new LogicApiDataSource().getGameState(request);
-
-    if (result.error) {
-      console.error('Error creating action', result.error);
-    }
-
-    console.log('Game state set', result.data);
-  }
-
-  // useEffect(() => {
-  //   storePlayers({players: [{name: 'player1', is_active: true, address: '0x123', role: 'Villager', nonce: 1, is_moderator: false}]});
-  //   // getPlayers({});
-  //   AssignRole({address:'0x123', role: 'Mafia', nonce: 123});
-  //   getPlayers({});
-
-  // },[]);
-
   // ==========================================================================
 
   const provider = new RpcProvider({
@@ -475,20 +444,7 @@ const ModeratorMafiaPortal: React.FC = () => {
     };
 
     handleConnectWallet();
-
-    if (gameId) {
-      const fetchData = async () => {
-        await fetchGameData();
-        await fetchPlayers();
-        await fetchProposalMessages(1);
-      };
-
-      fetchData();
-      const interval = setInterval(() => fetchProposalMessages(1), 5000); // Fetch messages every 5 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [gameId, address]);
+  }, [address]);
 
   const fetchGameData = async () => {
     try {
@@ -497,6 +453,8 @@ const ModeratorMafiaPortal: React.FC = () => {
         const gameStateResponse = await contract.get_game_state(gameId);
         console.log('Game state:', gameStateResponse);
         // Update game state in the component
+        setCurrentPhase(Number(gameStateResponse.current_phase));
+        setGameState(gameStateResponse);
       }
     } catch (error) {
       console.error('Error fetching game data:', error);
@@ -515,22 +473,27 @@ const ModeratorMafiaPortal: React.FC = () => {
               playerAddress,
             );
             const playerName = shortString.decodeShortString(playerInfo.name);
+            const public_identity_key = twoFeltToString(
+              playerInfo.public_identity_key_1,
+              playerInfo.public_identity_key_2,
+            );
             const player = {
               name: playerName,
-              role: '',
-              isAlive: true,
-              isModerator: playerInfo.is_moderator,
               address: num.toHex(playerAddress),
+              public_identity_key: public_identity_key,
+              is_active: playerInfo.is_active,
+              is_moderator: playerInfo.is_moderator,
+              revealed_role: playerInfo.revealed_role,
             };
 
-            // Set current player if address matches
-            if (playerAddress === address) {
+            if (playerAddress == address) {
               setCurrentPlayer(player);
             }
 
             return player;
           }),
         );
+        console.log('Players:', playersInfo);
         setPlayers(playersInfo);
       }
     } catch (error) {
@@ -566,103 +529,157 @@ const ModeratorMafiaPortal: React.FC = () => {
     }
   };
 
-  const assignRole = useCallback((playerName: string, role: string) => {
-    setPlayers((prev) =>
-      prev.map((player) =>
-        player.name === playerName ? { ...player, role } : player,
-      ),
-    );
-  }, []);
+  const assignRole = async (playerAddress: String, role: number) => {
+    console.log('Assigning role to player', playerAddress, getRoleName(role));
 
-  const commitRoles = useCallback(async () => {
-    try {
-      const contract = await getContract();
-      if (contract && gameId) {
-        // Implement the contract call to commit roles
-        // This is a placeholder and needs to be replaced with the actual contract method
-        // await contract.commit_roles(gameId, players.map(p => ({ name: p.name, role: p.role })))
-        console.log(
-          'Roles committed:',
-          players.map((p) => `${p.name}: ${p.role}`),
-        );
-        setCurrentPhase('Night');
-        toast.success('Roles committed successfully!');
-      }
-    } catch (error) {
-      console.error('Error committing roles:', error);
-      toast.error('Failed to commit roles. Please try again.');
-    }
-  }, [players, gameId]);
-
-  const eliminatePlayer = useCallback(
-    async (playerName: string) => {
-      try {
+    await toast.promise(
+      (async () => {
+        // a
         const contract = await getContract();
-        if (contract && gameId) {
-          // Implement the contract call to eliminate a player
-          // This is a placeholder and needs to be replaced with the actual contract method
-          // await contract.eliminate_player(gameId, playerName)
-          setPlayers((prev) =>
-            prev.map((player) =>
-              player.name === playerName
-                ? { ...player, isAlive: false }
-                : player,
-            ),
-          );
-          toast.success(`${playerName} has been eliminated.`);
+        // const nonce = Math.floor(Math.random() * 10) + 1;
+        const nonce = 1;
+
+        const commitment = await contract.get_role_commitment_hash(
+          gameId,
+          playerAddress,
+          role,
+          nonce,
+        );
+
+        const call = await connection.execute([
+          {
+            contractAddress: contractData.contractAddress,
+            entrypoint: 'submit_role_commitment',
+            calldata: CallData.compile({
+              game_id: gameId,
+              player: playerAddress,
+              commitment: commitment,
+              mafia_count: 1,
+              villager_count: 2,
+            }),
+          },
+        ]);
+
+        await storePlayerRoleNonce({
+          address: playerAddress,
+          role: role.toString(),
+          nonce: nonce,
+        });
+
+        const response = await fetch('http://localhost:3000/api/events', {
+          method: 'POST',
+          body: JSON.stringify({
+            game_id: gameId,
+            transaction_hash: call.transaction_hash,
+          }),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          toast.error('Failed to update the chat server. Please try again.');
+        } else {
+          toast.success('Message sent successfully!');
         }
-      } catch (error) {
-        console.error('Error eliminating player:', error);
-        toast.error('Failed to eliminate player. Please try again.');
-      }
-    },
-    [gameId],
-  );
-
-  const fetchProposalMessages = async () => {
-    const params: GetProposalMessagesRequest = {
-      proposal_id: '1',
-    };
-    try {
-      const result: ResponseData<GetProposalMessagesResponse> =
-        await new LogicApiDataSource().getProposalMessages(params);
-      if (result?.error) {
-        console.error('Error:', result.error);
-        toast.error(`Failed to fetch messages: ${result.error.message}`);
-        return;
-      }
-      setMessages(result.data.messages);
-    } catch (error) {
-      console.error('Error fetching proposal messages:', error);
-      toast.error('Failed to fetch messages. Please try again.');
-    }
-  };
-
-  const sendProposalMessage = async (text: string) => {
-    const params: SendProposalMessageRequest = {
-      proposal_id: '1',
-      message: {
-        id: `msg_${Date.now()}`,
-        proposal_id: '1',
-        author: 'Moderator',
-        text: text,
-        created_at: new Date().toISOString(),
+        // await fetchGameData();
+      })(),
+      {
+        loading: 'Starting the game...',
+        success: 'Game started successfully!',
+        error: 'Failed to start the game. Please try again.',
       },
-    };
-    try {
-      const result: ResponseData<SendProposalMessageResponse> =
-        await new LogicApiDataSource().sendProposalMessage(params);
-      if (result?.error) {
-        console.error('Error:', result.error);
-        toast.error(`Failed to send message: ${result.error.message}`);
-        return;
-      }
-      await fetchProposalMessages(1);
-    } catch (error) {
-      console.error('Error sending proposal message:', error);
-      toast.error('Failed to send message. Please try again.');
-    }
+    );
   };
+
+  async function eliminatePlayer(playerAddress: String) {
+    await toast.promise(
+      (async () => {
+        await fetchGameData();
+
+        const call = await connection.execute([
+          {
+            contractAddress: contractData.contractAddress,
+            entrypoint: 'eliminate_player_by_mafia',
+            calldata: CallData.compile({
+              game_id: gameId,
+              player: playerAddress,
+              mafia_remaining: gameState.active_mafia_count,
+              mafia_1_commitment: 123,
+              mafia_2_commitment: 123,
+            }),
+          },
+        ]);
+
+        const response = await fetch('http://localhost:3000/api/events', {
+          method: 'POST',
+          body: JSON.stringify({
+            game_id: gameId,
+            transaction_hash: call.transaction_hash,
+          }),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          toast.error('Failed to update the chat server. Please try again.');
+        } else {
+          toast.success('Message sent successfully!');
+        }
+        // await fetchGameData();
+      })(),
+      {
+        loading: 'Starting the game...',
+        success: 'Game started successfully!',
+        error: 'Failed to start the game. Please try again.',
+      },
+    );
+  }
+
+  async function revealRole(playerAddress: String) {
+    await toast.promise(
+      (async () => {
+        const RoleNonce = await getPlayerRoleNonce({ address: playerAddress });
+
+        const call = await connection.execute([
+          {
+            contractAddress: contractData.contractAddress,
+            entrypoint: 'reveal_role',
+            calldata: CallData.compile({
+              game_id: gameId,
+              player: playerAddress,
+              role: RoleNonce.role,
+              nonce: RoleNonce.nonce,
+            }),
+          },
+        ]);
+
+        const response = await fetch('http://localhost:3000/api/events', {
+          method: 'POST',
+          body: JSON.stringify({
+            game_id: gameId,
+            transaction_hash: call.transaction_hash,
+          }),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          toast.error('Failed to update the chat server. Please try again.');
+        } else {
+          toast.success('Message sent successfully!');
+        }
+        // await fetchGameData();
+      })(),
+      {
+        loading: 'Starting the game...',
+        success: 'Game started successfully!',
+        error: 'Failed to start the game. Please try again.',
+      },
+    );
+  }
 
   const sendMessage = useCallback(
     async (e: React.FormEvent) => {
@@ -675,25 +692,46 @@ const ModeratorMafiaPortal: React.FC = () => {
     [newMessage, gameId],
   );
 
-  const togglePhase = useCallback(async () => {
-    try {
-      const contract = await getContract();
-      if (contract && gameId) {
-        // Implement the contract call to toggle the game phase
-        // This is a placeholder and needs to be replaced with the actual contract method
-        // await contract.toggle_phase(gameId)
-        setCurrentPhase((prev) => (prev === 'Night' ? 'Day' : 'Night'));
-        toast.success(
-          `Phase changed to ${currentPhase === 'Night' ? 'Day' : 'Night'}`,
-        );
-      }
-    } catch (error) {
-      console.error('Error toggling phase:', error);
-      toast.error('Failed to change game phase. Please try again.');
-    }
-  }, [gameId, currentPhase]);
+  async function fetchProposalMessages() {
+    const params: GetProposalMessagesRequest = {
+      proposal_id: '1',
+    };
+    const result: ResponseData<GetProposalMessagesResponse> =
+      await new LogicApiDataSource().getProposalMessages(params);
 
-  const doesGameExist = async (gameId: string) => {
+    // console.log(result);
+    // const messages = ;
+    setMessages(result?.data?.messages || []);
+    if (result?.error) {
+      console.error('Error:', result.error);
+      window.alert(`${result.error.message}`);
+      return;
+    }
+  }
+
+  async function sendProposalMessage(message: String) {
+    const params: SendProposalMessageRequest = {
+      proposal_id: '1',
+      message: {
+        id: '1',
+        proposal_id: '1',
+        author: currentPlayer?.name || 'Anonymous',
+        text: message,
+        created_at: new Date().toISOString(),
+      },
+    };
+    const result: ResponseData<SendProposalMessageResponse> =
+      await new LogicApiDataSource().sendProposalMessage(params);
+
+    await fetchProposalMessages();
+    if (result?.error) {
+      console.error('Error:', result.error);
+      window.alert(`${result.error.message}`);
+      return;
+    }
+  }
+
+  const doesGameExist = async (gameId: String) => {
     const contract = await getContract();
     if (!contract) return false;
     try {
@@ -709,15 +747,26 @@ const ModeratorMafiaPortal: React.FC = () => {
   const handleGameIdSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (gameId) {
-      const gameExists = await doesGameExist(gameId);
-      if (gameExists) {
-        await fetchGameData();
-        await fetchPlayers();
-        await fetchProposalMessages(1);
-        setGameIdEntered(true);
-      } else {
-        toast.error('Game not found. Please check the Game ID and try again.');
-      }
+      await toast.promise(
+        (async () => {
+          const gameExists = await doesGameExist(gameId);
+          if (gameExists) {
+            await fetchGameData();
+            await fetchPlayers();
+            // await fetchProposalMessages(1);
+            setGameIdEntered(true);
+          } else {
+            toast.error(
+              'Game not found. Please check the Game ID and try again.',
+            );
+          }
+        })(),
+        {
+          loading: 'Starting the game...',
+          success: 'Game started successfully!',
+          error: 'Failed to start the game. Please try again.',
+        },
+      );
     }
   };
 
@@ -755,53 +804,13 @@ const ModeratorMafiaPortal: React.FC = () => {
         >
           <button
             onClick={() =>
-              storePlayers({
-                players: [
-                  {
-                    name: 'player1',
-                    is_active: true,
-                    address: '0x123',
-                    role: 'Villager',
-                    nonce: 1,
-                    is_moderator: false,
-                  },
-                ],
-              })
-            }
-          >
-            Mock Set Players
-          </button>
-          <button onClick={() => getPlayers({})}>Get Players for test</button>
-          <button
-            onClick={() =>
-              AssignRole({ address: '0x123', role: 'dj', nonce: 234 })
+              storePlayerRoleNonce({ address: address, role: '1', nonce: 1 })
             }
           >
             Assign Role
           </button>
-          <button onClick={() => getPlayerNonce({ address: '0x123' })}>
+          <button onClick={() => getPlayerRoleNonce({ address: address })}>
             Get Player Nonce
-          </button>
-          <button onClick={() => getGameState({})}>Get Game State</button>
-          <button
-            onClick={() =>
-              setGameState({
-                game_state: {
-                  current_phase: 3,
-                  player_count: 10,
-                  current_day: 0,
-                  moderator: 'ox376',
-                  is_moderator_chosen: true,
-                  mafia_count: 10000,
-                  villager_count: 0,
-                  moderator_count: 0,
-                  active_mafia_count: 0,
-                  active_villager_count: 0,
-                },
-              })
-            }
-          >
-            Set Game State
           </button>
           <Header>
             <HeaderTitle>Cali Mafia</HeaderTitle>
@@ -812,7 +821,7 @@ const ModeratorMafiaPortal: React.FC = () => {
               </InfoItem>
               <InfoItem>
                 <Activity />
-                {currentPhase}
+                {getPhaseName(currentPhase)} Phase
               </InfoItem>
             </HeaderInfo>
           </Header>
@@ -821,7 +830,7 @@ const ModeratorMafiaPortal: React.FC = () => {
             <PlayerStatus>
               <Shield size={24} />
               <span>Playing as: {currentPlayer.name}</span>
-              {currentPlayer.isModerator && (
+              {currentPlayer.is_moderator && (
                 <span className="text-primary">(Moderator)</span>
               )}
             </PlayerStatus>
@@ -846,59 +855,56 @@ const ModeratorMafiaPortal: React.FC = () => {
           ) : (
             <motion.div variants={containerVariants}>
               <PhaseIndicator variants={itemVariants}>
-                {currentPhase === 'Night' ? (
+                {currentPhase === PHASE_NIGHT ? (
                   <Moon />
-                ) : currentPhase === 'Day' ? (
+                ) : currentPhase === PHASE_DAY ? (
                   <Sun />
                 ) : (
                   <Crown />
                 )}
-                {currentPhase} Phase
+                {getPhaseName(currentPhase)} Phase
               </PhaseIndicator>
 
-              {currentPhase === 'Role Assignment' && (
+              {currentPhase === PHASE_ROLE_ASSIGNMENT && (
                 <>
                   <RoleAssignmentGrid variants={containerVariants}>
-                    {players.map((player) => (
-                      <RoleCard
-                        key={player.name}
-                        selected={player.name === selectedPlayer}
-                        onClick={() => setSelectedPlayer(player.name)}
-                        variants={itemVariants}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <h3>{player.name}</h3>
-                        <Button
-                          onClick={() => assignRole(player.name, 'Villager')}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          Assign Villager
-                        </Button>
-                        <Button
-                          onClick={() => assignRole(player.name, 'Mafia')}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          Assign Mafia
-                        </Button>
-                      </RoleCard>
-                    ))}
+                    {players.map(
+                      (player) =>
+                        !player.is_moderator && (
+                          <RoleCard
+                            key={player.address}
+                            variants={itemVariants}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <h3>{player.name}</h3>
+                            {/* <p>{player}</p> */}
+                            <Button
+                              onClick={() =>
+                                assignRole(player.address, ROLE_VILLAGER)
+                              }
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              Assign Villager
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                assignRole(player.address, ROLE_MAFIA)
+                              }
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              Assign Mafia
+                            </Button>
+                          </RoleCard>
+                        ),
+                    )}
                   </RoleAssignmentGrid>
-
-                  <Button
-                    onClick={commitRoles}
-                    disabled={players.some((p) => !p.role)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Commit Roles and Start Game
-                  </Button>
                 </>
               )}
 
-              {(currentPhase === 'Night' || currentPhase === 'Day') && (
+              {(currentPhase === PHASE_NIGHT || currentPhase === PHASE_DAY) && (
                 <>
                   <PlayerList variants={containerVariants}>
                     <h3>Players:</h3>
@@ -906,29 +912,35 @@ const ModeratorMafiaPortal: React.FC = () => {
                       {players.map((player) => (
                         <PlayerListItem
                           key={player.name}
-                          isAlive={player.isAlive}
-                          isMafia={player.role === 'Mafia'}
+                          is_active={player.is_active}
                           variants={itemVariants}
                           initial="hidden"
                           animate="visible"
                           exit="hidden"
                         >
                           <span>
-                            {player.isAlive ? <UserCircle2 /> : <Skull />}{' '}
-                            {player.name}
-                            {!player.isAlive && ` - ${player.role}`}
+                            {player.is_active ? <UserCircle2 /> : <Skull />}{' '}
+                            {player.name}{' '}
+                            {player.is_moderator && <p>(Moderator)</p>}
                           </span>
-                          {player.isAlive &&
-                            currentPhase === 'Night' &&
-                            currentPlayer?.isModerator && (
+                          {player.is_active &&
+                            !player.is_moderator &&
+                            currentPhase === PHASE_NIGHT && (
                               <Button
-                                onClick={() => eliminatePlayer(player.name)}
+                                onClick={() => eliminatePlayer(player.address)}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                               >
                                 Eliminate
                               </Button>
                             )}
+
+                          {!player.is_active && (
+                            <Button onClick={() => revealRole(player.address)}>
+                              {' '}
+                              Reveal Role{' '}
+                            </Button>
+                          )}
                         </PlayerListItem>
                       ))}
                     </AnimatePresence>
@@ -942,7 +954,7 @@ const ModeratorMafiaPortal: React.FC = () => {
                     {messages.map((message) => (
                       <ChatMessage
                         key={message.id}
-                        isModerator={message.author === 'Moderator'}
+                        is_moderator={message.author === 'Moderator'}
                         variants={itemVariants}
                       >
                         <strong>{message.author}:</strong> {message.text}

@@ -8,38 +8,9 @@ export interface Message {
   created_at: String;
 }
 
-export interface Player {
-  name: String;
-  is_active: Boolean;
-  address: String;
+export interface RoleNonce {
   role: String;
   nonce: Number;
-  is_moderator: Boolean;
-}
-
-export interface GameState {
-  current_phase: number;
-  player_count: number;
-  current_day: number;
-  moderator: String;
-  is_moderator_chosen: Boolean;
-  mafia_count: number;
-  villager_count: number;
-  moderator_count: number;
-  active_mafia_count: number;
-  active_villager_count: number;
-}
-
-export interface StorePlayersRequest {
-  players: Player[];
-}
-
-export interface StorePlayersResponse {}
-
-export interface GetPlayersRequest {}
-
-export interface GetPlayersResponse {
-  players: Player[];
 }
 
 export interface AssignRoleRequest {
@@ -57,30 +28,6 @@ export interface GetPlayerNonceRequest {
 export interface GetPlayerNonceResponse {
   nonce: Number;
 }
-
-export interface SetGameStateRequest {
-  game_state: GameState;
-}
-
-export interface SetGameStateResponse {}
-
-export interface GetGameStateRequest {}
-
-export interface GetGameStateResponse {
-  game_state: GameState;
-}
-
-export interface GetMessagesRequest {}
-
-export interface GetMessagesResponse {
-  messages: Message[];
-}
-
-export interface CreateMessageRequest {
-  message: Message;
-}
-
-export interface CreateMessageResponse {}
 
 export interface GetProposalMessagesRequest {
   // proposalId: String;
@@ -161,22 +108,12 @@ export enum ClientMethod {
   SEND_PROPOSAL_MESSAGE = 'send_proposal_messages',
   CREATE_PROPOSAL = 'create_new_proposal',
   APPROVE_PROPOSAL = 'approve_proposal',
-  GET_MESSAGES = 'get_messages',
-  CREATE_MESSAGE = 'create_message',
-  STORE_PLAYERS = 'store_players',
-  GET_PLAYERS = 'get_players',
   ASSIGN_ROLE = 'assign_role_and_nonce',
-  GET_PLAYER_NONCE = 'get_player_nonce',
-  SET_GAME_STATE = 'set_game_state',
-  GET_GAME_STATE = 'get_game_state',
+  GET_PLAYER_NONCE = 'get_role_and_nonce',
 }
 
 export interface ClientApi {
   //Cali Storage
-  getMessages(request: GetMessagesRequest): ApiResponse<GetMessagesResponse>;
-  CreateMessage(
-    request: CreateMessageRequest,
-  ): ApiResponse<CreateMessageResponse>;
   getProposalMessages(
     proposalsRequest: GetProposalMessagesRequest,
   ): ApiResponse<GetProposalMessagesResponse>;

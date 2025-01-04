@@ -82,77 +82,77 @@ export function getConfigAndJwt() {
 }
 
 export class LogicApiDataSource implements ClientApi {
-  async storePlayers(
-    request: StorePlayersRequest,
-  ): ApiResponse<StorePlayersResponse> {
-    const { jwtObject, config, error } = getConfigAndJwt();
-    if (error) {
-      return { error };
-    }
+  // async storePlayers(
+  //   request: StorePlayersRequest,
+  // ): ApiResponse<StorePlayersResponse> {
+  //   const { jwtObject, config, error } = getConfigAndJwt();
+  //   if (error) {
+  //     return { error };
+  //   }
 
-    console.log('Creating action with request:', request);
+  //   console.log('Creating action with request:', request);
 
-    const params: RpcQueryParams<typeof request> = {
-      contextId: jwtObject?.context_id ?? getContextId(),
-      method: ClientMethod.STORE_PLAYERS,
-      argsJson: request,
-      executorPublicKey: jwtObject.executor_public_key,
-    };
+  //   const params: RpcQueryParams<typeof request> = {
+  //     contextId: jwtObject?.context_id ?? getContextId(),
+  //     method: ClientMethod.STORE_PLAYERS,
+  //     argsJson: request,
+  //     executorPublicKey: jwtObject.executor_public_key,
+  //   };
 
-    console.log('RPC params:', params);
+  //   console.log('RPC params:', params);
 
-    const response = await getJsonRpcClient().execute<
-      typeof request,
-      StorePlayersResponse
-    >(params, config);
+  //   const response = await getJsonRpcClient().execute<
+  //     typeof request,
+  //     StorePlayersResponse
+  //   >(params, config);
 
-    console.log('Raw response:', response);
+  //   console.log('Raw response:', response);
 
-    if (response?.error) {
-      console.error('RPC error:', response.error);
-      return await this.handleError(response.error, {}, this.createAction);
-    }
+  //   if (response?.error) {
+  //     console.error('RPC error:', response.error);
+  //     return await this.handleError(response.error, {}, this.createAction);
+  //   }
 
-    return {
-      data: response.result.output as StorePlayersResponse,
-      error: null,
-    };
-  }
+  //   return {
+  //     data: response.result.output as StorePlayersResponse,
+  //     error: null,
+  //   };
+  // }
 
-  async getPlayers(
-    request: GetPlayersRequest,
-  ): ApiResponse<GetPlayersResponse> {
-    const { jwtObject, config, error } = getConfigAndJwt();
-    if (error) {
-      return { error };
-    }
+  // async getPlayers(
+  //   request: GetPlayersRequest,
+  // ): ApiResponse<GetPlayersResponse> {
+  //   const { jwtObject, config, error } = getConfigAndJwt();
+  //   if (error) {
+  //     return { error };
+  //   }
 
-    const params: RpcQueryParams<typeof request> = {
-      contextId: jwtObject?.context_id ?? getContextId(),
-      method: ClientMethod.GET_PLAYERS,
-      argsJson: request,
-      executorPublicKey: jwtObject.executor_public_key,
-    };
+  //   const params: RpcQueryParams<typeof request> = {
+  //     contextId: jwtObject?.context_id ?? getContextId(),
+  //     method: ClientMethod.GET_PLAYERS,
+  //     argsJson: request,
+  //     executorPublicKey: jwtObject.executor_public_key,
+  //   };
 
-    console.log('RPC params:', params);
+  //   console.log('RPC params:', params);
 
-    const response = await getJsonRpcClient().execute<
-      typeof request,
-      GetPlayersResponse
-    >(params, config);
+  //   const response = await getJsonRpcClient().execute<
+  //     typeof request,
+  //     GetPlayersResponse
+  //   >(params, config);
 
-    console.log('Raw response:', response);
+  //   console.log('Raw response:', response);
 
-    if (response?.error) {
-      console.error('RPC error:', response.error);
-      return await this.handleError(response.error, {}, this.createAction);
-    }
+  //   if (response?.error) {
+  //     console.error('RPC error:', response.error);
+  //     return await this.handleError(response.error, {}, this.createAction);
+  //   }
 
-    return {
-      data: response.result.output as GetPlayersResponse,
-      error: null,
-    };
-  }
+  //   return {
+  //     data: response.result.output as GetPlayersResponse,
+  //     error: null,
+  //   };
+  // }
 
   async assignRole(
     request: AssignRoleRequest,
@@ -224,75 +224,75 @@ export class LogicApiDataSource implements ClientApi {
     };
   }
 
-  async getGameState(
-    request: GetGameStateRequest,
-  ): ApiResponse<GetGameStateResponse> {
-    const { jwtObject, config, error } = getConfigAndJwt();
-    if (error) {
-      return { error };
-    }
+  // async getGameState(
+  //   request: GetGameStateRequest,
+  // ): ApiResponse<GetGameStateResponse> {
+  //   const { jwtObject, config, error } = getConfigAndJwt();
+  //   if (error) {
+  //     return { error };
+  //   }
 
-    const params: RpcQueryParams<typeof request> = {
-      contextId: jwtObject?.context_id ?? getContextId(),
-      method: ClientMethod.GET_GAME_STATE,
-      argsJson: request,
-      executorPublicKey: jwtObject.executor_public_key,
-    };
+  //   const params: RpcQueryParams<typeof request> = {
+  //     contextId: jwtObject?.context_id ?? getContextId(),
+  //     method: ClientMethod.GET_GAME_STATE,
+  //     argsJson: request,
+  //     executorPublicKey: jwtObject.executor_public_key,
+  //   };
 
-    console.log('RPC params:', params);
+  //   console.log('RPC params:', params);
 
-    const response = await getJsonRpcClient().execute<
-      typeof request,
-      GetGameStateResponse
-    >(params, config);
+  //   const response = await getJsonRpcClient().execute<
+  //     typeof request,
+  //     GetGameStateResponse
+  //   >(params, config);
 
-    console.log('Raw response:', response);
+  //   console.log('Raw response:', response);
 
-    if (response?.error) {
-      console.error('RPC error:', response.error);
-      return await this.handleError(response.error, {}, this.createAction);
-    }
+  //   if (response?.error) {
+  //     console.error('RPC error:', response.error);
+  //     return await this.handleError(response.error, {}, this.createAction);
+  //   }
 
-    return {
-      data: response.result.output as GetGameStateResponse,
-      error: null,
-    };
-  }
+  //   return {
+  //     data: response.result.output as GetGameStateResponse,
+  //     error: null,
+  //   };
+  // }
 
-  async setGameState(
-    request: SetGameStateRequest,
-  ): ApiResponse<SetGameStateResponse> {
-    const { jwtObject, config, error } = getConfigAndJwt();
-    if (error) {
-      return { error };
-    }
+  // async setGameState(
+  //   request: SetGameStateRequest,
+  // ): ApiResponse<SetGameStateResponse> {
+  //   const { jwtObject, config, error } = getConfigAndJwt();
+  //   if (error) {
+  //     return { error };
+  //   }
 
-    const params: RpcQueryParams<typeof request> = {
-      contextId: jwtObject?.context_id ?? getContextId(),
-      method: ClientMethod.SET_GAME_STATE,
-      argsJson: request,
-      executorPublicKey: jwtObject.executor_public_key,
-    };
+  //   const params: RpcQueryParams<typeof request> = {
+  //     contextId: jwtObject?.context_id ?? getContextId(),
+  //     method: ClientMethod.SET_GAME_STATE,
+  //     argsJson: request,
+  //     executorPublicKey: jwtObject.executor_public_key,
+  //   };
 
-    console.log('RPC params:', params);
+  //   console.log('RPC params:', params);
 
-    const response = await getJsonRpcClient().execute<
-      typeof request,
-      SetGameStateResponse
-    >(params, config);
+  //   const response = await getJsonRpcClient().execute<
+  //     typeof request,
+  //     SetGameStateResponse
+  //   >(params, config);
 
-    console.log('Raw response:', response);
+  //   console.log('Raw response:', response);
 
-    if (response?.error) {
-      console.error('RPC error:', response.error);
-      return await this.handleError(response.error, {}, this.createAction);
-    }
+  //   if (response?.error) {
+  //     console.error('RPC error:', response.error);
+  //     return await this.handleError(response.error, {}, this.createAction);
+  //   }
 
-    return {
-      data: response.result.output as SetGameStateResponse,
-      error: null,
-    };
-  }
+  //   return {
+  //     data: response.result.output as SetGameStateResponse,
+  //     error: null,
+  //   };
+  // }
 
   async createProposal(
     request: CreateProposalRequest,
@@ -420,77 +420,77 @@ export class LogicApiDataSource implements ClientApi {
 
   // }
 
-  async getMessages(
-    request: GetMessagesRequest,
-  ): ApiResponse<GetMessagesResponse> {
-    const { jwtObject, config, error } = getConfigAndJwt();
-    if (error) {
-      return { error };
-    }
+  // async getMessages(
+  //   request: GetMessagesRequest,
+  // ): ApiResponse<GetMessagesResponse> {
+  //   const { jwtObject, config, error } = getConfigAndJwt();
+  //   if (error) {
+  //     return { error };
+  //   }
 
-    console.log('getMessages', request);
+  //   console.log('getMessages', request);
 
-    const params: RpcQueryParams<GetMessagesRequest> = {
-      contextId: jwtObject?.context_id ?? getContextId(),
-      method: ClientMethod.GET_MESSAGES,
-      argsJson: request,
-      executorPublicKey: jwtObject.executor_public_key,
-    };
+  //   const params: RpcQueryParams<GetMessagesRequest> = {
+  //     contextId: jwtObject?.context_id ?? getContextId(),
+  //     method: ClientMethod.GET_MESSAGES,
+  //     argsJson: request,
+  //     executorPublicKey: jwtObject.executor_public_key,
+  //   };
 
-    const response = await getJsonRpcClient().query<
-      GetMessagesRequest,
-      GetMessagesResponse
-    >(params, config);
+  //   const response = await getJsonRpcClient().query<
+  //     GetMessagesRequest,
+  //     GetMessagesResponse
+  //   >(params, config);
 
-    console.log('getMessages response', response);
+  //   console.log('getMessages response', response);
 
-    if (response?.error) {
-      return await this.handleError(
-        response.error,
-        {},
-        this.getProposalMessages,
-      );
-    }
+  //   if (response?.error) {
+  //     return await this.handleError(
+  //       response.error,
+  //       {},
+  //       this.getProposalMessages,
+  //     );
+  //   }
 
-    let getMessagesResponse: GetMessagesResponse = {
-      messages: response?.result?.output?.messages,
-    } as GetProposalMessagesResponse;
+  //   let getMessagesResponse: GetMessagesResponse = {
+  //     messages: response?.result?.output?.messages,
+  //   } as GetProposalMessagesResponse;
 
-    return {
-      data: getMessagesResponse,
-      error: null,
-    };
-  }
+  //   return {
+  //     data: getMessagesResponse,
+  //     error: null,
+  //   };
+  // }
 
-  async createMessage(
-    request: CreateMessageRequest,
-  ): ApiResponse<CreateMessageResponse> {
-    const { jwtObject, config, error } = getConfigAndJwt();
-    if (error) {
-      return { error };
-    }
+  // async createMessage(
+  //   request: CreateMessageRequest,
+  // ): ApiResponse<CreateMessageResponse> {
+  //   const { jwtObject, config, error } = getConfigAndJwt();
+  //   if (error) {
+  //     return { error };
+  //   }
 
-    const response = await getJsonRpcClient().execute<
-      CreateMessageRequest,
-      CreateMessageResponse
-    >(
-      {
-        contextId: jwtObject?.context_id ?? getContextId(),
-        method: ClientMethod.CREATE_MESSAGE,
-        argsJson: request,
-        executorPublicKey: jwtObject.executor_public_key,
-      },
-      config,
-    );
-    if (response?.error) {
-      return await this.handleError(response.error, {}, this.createMessage);
-    }
+  //   const response = await getJsonRpcClient().execute<
+  //     CreateMessageRequest,
+  //     CreateMessageResponse
+  //   >(
+  //     {
+  //       contextId: jwtObject?.context_id ?? getContextId(),
+  //       method: ClientMethod.CREATE_MESSAGE,
+  //       argsJson: request,
+  //       executorPublicKey: jwtObject.executor_public_key,
+  //     },
+  //     config,
+  //   );
+  //   if (response?.error) {
+  //     return await this.handleError(response.error, {}, this.createMessage);
+  //   }
 
-    return {
-      data: {},
-      error: null,
-    };
-  }
+  //   return {
+  //     data: {},
+  //     error: null,
+  //   };
+  // }
 
   async getProposalMessages(
     request: GetProposalMessagesRequest,

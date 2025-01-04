@@ -13,6 +13,7 @@ pub struct AppState {
     messages: UnorderedMap<ProposalId, Vector<Message>>,
     players: Vec<Player>,
     game_state: GameState,
+    player_roles: UnorderedMap<String, RoleNonce>,
 }
 
 #[derive(
@@ -26,6 +27,16 @@ pub struct Message {
     author: String,
     text: String,
     created_at: String,
+}
+
+#[derive(
+    Clone, Debug, PartialEq, PartialOrd, BorshSerialize, BorshDeserialize, Serialize, Deserialize,
+)]
+#[borsh(crate = "calimero_sdk::borsh")]
+#[serde(crate = "calimero_sdk::serde")]
+pub struct RoleNonce {
+    role: String,
+    nonce: usize,
 }
 
 #[derive(
@@ -93,6 +104,7 @@ impl AppState {
                 active_mafia_count: 0,
                 active_villager_count: 0,
             },
+            player_roles: UnorderedMap::new(),
         }
     }
 
@@ -112,14 +124,44 @@ impl AppState {
         role: String,
         nonce: usize,
     ) -> Result<(), Error> {
+        // let player_index = self
+        //     .players
+        //     .iter()
+        //     .position(|p| p.address == address)
+        //     .ok_or(Error::msg("Player not found"))?;
+
+        // self.players[player_index].role = role;
+        // self.players[player_index].nonce = nonce;
+        // Ok(())
+
+        self.player_roles
+            .insert(address, RoleNonce { role, nonce })?;
+        Ok(())
+    }
+
+    pub fn get_role_and_nonce(&self, address: String) -> Result<RoleNonce, Error> {
+        let role_nonce = self.player_roles.get(&address)?.unwrap_or(RoleNonce {
+            role: "Not Found".to_string(),
+            nonce: 0,
+        });
+        Ok(role_nonce)
+        // let Some(msgs) = self.messages.get(&proposal_id)? else {
+        //     return Ok(vec![]);
+        // };
+
+        // let entries = msgs.entries()?;
+
+        // Ok(entries.collect())
+    }
+
+    pub fn eliminate_player(&mut self, address: String) -> Result<(), Error> {
         let player_index = self
             .players
             .iter()
             .position(|p| p.address == address)
             .ok_or(Error::msg("Player not found"))?;
 
-        self.players[player_index].role = role;
-        self.players[player_index].nonce = nonce;
+        self.players[player_index].is_active = false;
         Ok(())
     }
 
