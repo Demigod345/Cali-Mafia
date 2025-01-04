@@ -8,8 +8,6 @@ import { Player } from '../../types';
 import { ROLE_UNASSIGNED } from '../../utils/gameUtils';
 
 const PlayerListWrapper = styled(motion.div)`
-  margin-bottom: 1rem;
-  padding: 1.5rem;
   background: linear-gradient(
     to bottom,
     ${theme.colors.secondary},
@@ -17,7 +15,28 @@ const PlayerListWrapper = styled(motion.div)`
   );
   border: 1px solid ${theme.colors.primary};
   border-radius: 0.5rem;
-  animation: ${(props) => props.theme.glowAnimation} 3s infinite;
+  padding: 1.5rem;
+  width: 300px;
+  height: 100%;
+  overflow-y: auto;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    height: 300px;
+  }
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${theme.colors.dark};
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${theme.colors.primary};
+    border-radius: 4px;
+  }
 `;
 
 const PlayerListItem = styled(motion.div)<{ is_active: boolean }>`
@@ -57,7 +76,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
       <AnimatePresence>
         {players.map((player) => (
           <PlayerListItem
-            key={player.name}
+            key={player.address}
             is_active={player.is_active}
             initial="hidden"
             animate="visible"
@@ -79,7 +98,7 @@ const PlayerList: React.FC<PlayerListProps> = ({
             {!player.is_active && (
               <Button
                 onClick={() => onRevealRole(player.address)}
-                disabled={player.revealed_role !== ROLE_UNASSIGNED}
+                disabled={player.revealed_role != ROLE_UNASSIGNED}
               >
                 Reveal Role
               </Button>

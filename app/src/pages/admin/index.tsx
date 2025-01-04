@@ -45,33 +45,37 @@ import {
   Button,
   Input,
   Form,
+  PlayerStatus,
+  GameContent,
+  PhaseIndicator,
 } from '../../components/mafia/StyledComponents';
 import PlayerList from '../../components/mafia/PlayerList';
 import ChatArea from '../../components/mafia/ChatArea';
 import RoleAssignment from '../../components/mafia/RoleAssignment';
-
+import FinalScreen from '../../components/mafia/FinalScreen';
 import {
   PHASE_ROLE_ASSIGNMENT,
   PHASE_NIGHT,
   PHASE_DAY,
   getPhaseName,
+  getRoleName,
+  ROLE_MAFIA,
 } from '../../utils/gameUtils';
 import { Player, GameState, Message } from '../../types';
 
 const ModeratorMafiaPortal: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPhase, setCurrentPhase] = useState(PHASE_ROLE_ASSIGNMENT);
-  const [gameState, setGameState] = useState(null);
+  const [gameState, setGameState] = useState<GameState | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [connection, setConnection] = useState<WalletAccount | null>(null);
   const [address, setAddress] = useState('');
-  const [gameId, setGameId] = useState<String | null>(null);
+  const [gameId, setGameId] = useState<string | null>(null);
   const [gameIdEntered, setGameIdEntered] = useState(false);
   const [mafiaContract, setMafiaContract] = useState<Contract | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<String | null>(null);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
-
+  const [winner, setWinner] = useState<string | null>(null);
   // Calimero rpc calls written here ========================================
 
   async function storePlayerRoleNonce(request: AssignRoleRequest) {
@@ -126,25 +130,35 @@ const ModeratorMafiaPortal: React.FC = () => {
     handleConnectWallet();
   }, [address]);
 
-  const fetchGameData = async () => {
+  const fetchGameData = useCallback(async () => {
     try {
       const contract = await getContract();
-      if (contract) {
+      if (contract && gameId) {
         const gameStateResponse = await contract.get_game_state(gameId);
         console.log('Game state:', gameStateResponse);
-        // Update game state in the component
         setCurrentPhase(Number(gameStateResponse.current_phase));
+        // setCurrentPhase(PHASE_ROLE_ASSIGNMENT);
         setGameState(gameStateResponse);
+
+        if (gameStateResponse.ended) {
+          const winnerResponse = await contract.check_winner(gameId);
+          // console.log('Winner:', winnerResponse);
+          if (Number(winnerResponse) == 1) {
+            setWinner('Villagers');
+          } else {
+            setWinner('Mafia');
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching game data:', error);
     }
-  };
+  }, [gameId]);
 
-  const fetchPlayers = async () => {
+  const fetchPlayers = useCallback(async () => {
     try {
       const contract = await getContract();
-      if (contract) {
+      if (contract && gameId) {
         const playerAddresses = await contract.get_players(gameId);
         const playersInfo = await Promise.all(
           playerAddresses.map(async (playerAddress) => {
@@ -179,7 +193,7 @@ const ModeratorMafiaPortal: React.FC = () => {
     } catch (error) {
       console.error('Error fetching players:', error);
     }
-  };
+  }, [gameId, address]);
 
   const getContract = async () => {
     if (mafiaContract != null) {
@@ -209,15 +223,19 @@ const ModeratorMafiaPortal: React.FC = () => {
     }
   };
 
-  const assignRole = async (playerAddress: String, role: number) => {
+  const assignRole = async (
+    playerAddress: String,
+    role: number,
+    invitationCode: String,
+  ) => {
     console.log('Assigning role to player', playerAddress, getRoleName(role));
 
     await toast.promise(
       (async () => {
         // a
         const contract = await getContract();
-        // const nonce = Math.floor(Math.random() * 10) + 1;
-        const nonce = 1;
+        const nonce = Math.floor(Math.random() * 10) + 1;
+        // const nonce = 1;
 
         const commitment = await contract.get_role_commitment_hash(
           gameId,
@@ -235,7 +253,7 @@ const ModeratorMafiaPortal: React.FC = () => {
               player: playerAddress,
               commitment: commitment,
               mafia_count: 1,
-              villager_count: 2,
+              villager_count: 3,
             }),
           },
         ]);
@@ -245,6 +263,18 @@ const ModeratorMafiaPortal: React.FC = () => {
           role: role.toString(),
           nonce: nonce,
         });
+        if (role == ROLE_MAFIA) {
+          fetch('http://localhost:3000/api/mod', {
+            method: 'POST',
+            body: JSON.stringify({
+              game_id: gameId,
+              invitation_payload: invitationCode,
+            }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+        }
 
         const response = await fetch('http://localhost:3000/api/events', {
           method: 'POST',
@@ -275,7 +305,7 @@ const ModeratorMafiaPortal: React.FC = () => {
   async function eliminatePlayer(playerAddress: String) {
     await toast.promise(
       (async () => {
-        await fetchGameData();
+        // await fetchGameData();
 
         const call = await connection.execute([
           {
@@ -372,22 +402,19 @@ const ModeratorMafiaPortal: React.FC = () => {
     [newMessage, gameId],
   );
 
-  async function fetchProposalMessages() {
+  const fetchProposalMessages = useCallback(async () => {
     const params: GetProposalMessagesRequest = {
       proposal_id: '1',
     };
     const result: ResponseData<GetProposalMessagesResponse> =
       await new LogicApiDataSource().getProposalMessages(params);
 
-    // console.log(result);
-    // const messages = ;
     setMessages(result?.data?.messages || []);
     if (result?.error) {
       console.error('Error:', result.error);
-      window.alert(`${result.error.message}`);
-      return;
+      toast.error(`Failed to fetch messages: ${result.error.message}`);
     }
-  }
+  }, []);
 
   async function sendProposalMessage(message: String) {
     const params: SendProposalMessageRequest = {
@@ -449,6 +476,27 @@ const ModeratorMafiaPortal: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (
+      gameIdEntered &&
+      (currentPhase === PHASE_NIGHT || currentPhase === PHASE_DAY)
+    ) {
+      const intervalId = setInterval(() => {
+        fetchGameData();
+        fetchPlayers();
+        fetchProposalMessages();
+      }, 10000);
+
+      return () => clearInterval(intervalId);
+    }
+  }, [
+    gameIdEntered,
+    currentPhase,
+    fetchGameData,
+    fetchPlayers,
+    fetchProposalMessages,
+  ]);
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -496,13 +544,13 @@ const ModeratorMafiaPortal: React.FC = () => {
           </Header>
 
           {currentPlayer && (
-            <motion.div variants={itemVariants}>
+            <PlayerStatus variants={itemVariants}>
               <Shield size={24} />
               <span>Playing as: {currentPlayer.name}</span>
               {currentPlayer.is_moderator && (
-                <span className="text-primary">(Moderator)</span>
+                <span className="moderator-badge">Moderator</span>
               )}
-            </motion.div>
+            </PlayerStatus>
           )}
 
           {!gameIdEntered ? (
@@ -521,9 +569,11 @@ const ModeratorMafiaPortal: React.FC = () => {
                 Join Game
               </Button>
             </Form>
+          ) : winner ? (
+            <FinalScreen winner={winner} />
           ) : (
             <motion.div variants={containerVariants}>
-              <motion.div variants={itemVariants}>
+              <PhaseIndicator variants={itemVariants}>
                 {currentPhase === PHASE_NIGHT ? (
                   <Moon />
                 ) : currentPhase === PHASE_DAY ? (
@@ -532,14 +582,14 @@ const ModeratorMafiaPortal: React.FC = () => {
                   <MessageCircle />
                 )}
                 {getPhaseName(currentPhase)} Phase
-              </motion.div>
+              </PhaseIndicator>
 
               {currentPhase === PHASE_ROLE_ASSIGNMENT && (
                 <RoleAssignment players={players} assignRole={assignRole} />
               )}
 
               {(currentPhase === PHASE_NIGHT || currentPhase === PHASE_DAY) && (
-                <>
+                <GameContent>
                   <PlayerList
                     players={players}
                     currentPhase={currentPhase}
@@ -547,25 +597,13 @@ const ModeratorMafiaPortal: React.FC = () => {
                     onRevealRole={revealRole}
                   />
 
-                  <ChatArea messages={messages} />
-
-                  <Form onSubmit={sendMessage}>
-                    <Input
-                      type="text"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder="Type your message..."
-                    />
-                    <Button
-                      type="submit"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <MessageCircle />
-                      Send
-                    </Button>
-                  </Form>
-                </>
+                  <ChatArea
+                    messages={messages}
+                    newMessage={newMessage}
+                    setNewMessage={setNewMessage}
+                    sendMessage={sendMessage}
+                  />
+                </GameContent>
               )}
             </motion.div>
           )}

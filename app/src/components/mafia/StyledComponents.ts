@@ -121,16 +121,6 @@ export const Form = styled.form`
   margin-bottom: 1rem;
 `;
 
-export const PhaseIndicator = styled(motion.div)`
-  font-size: 2rem;
-  margin-bottom: 1.5em;
-  color: ${theme.colors.primary};
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  text-shadow: 0 0 10px ${theme.colors.primaryGlow};
-`;
-
 export const RoleAssignmentGrid = styled(motion.div)`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -155,14 +145,53 @@ export const RoleCard = styled(motion.div)<{ selected: boolean }>`
   }
 `;
 
-export const PlayerStatus = styled.div`
-  padding: 1rem;
-  background: ${theme.colors.dark};
-  border: 1px solid ${theme.colors.primary};
-  border-radius: 0.5rem;
-  margin-bottom: 1.5rem;
+export const PlayerStatus = styled(motion.div)`
   display: flex;
   align-items: center;
   gap: 1rem;
+  padding: 1rem;
+  background: ${theme.colors.secondary};
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
   color: ${theme.colors.primary};
+
+  .moderator-badge {
+    background: ${theme.colors.primary};
+    color: ${theme.colors.dark};
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: bold;
+  }
+`;
+
+export const GameContent = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+`;
+
+export const PhaseIndicator = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: ${theme.colors.dark};
+  border: 2px solid ${theme.colors.primary};
+  border-radius: 0.5rem;
+  color: ${theme.colors.primary};
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  box-shadow: 0 0 10px ${theme.colors.primaryGlow};
+
+  svg {
+    width: 24px;
+    height: 24px;
+  }
 `;
