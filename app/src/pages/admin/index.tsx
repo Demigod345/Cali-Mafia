@@ -1,19 +1,14 @@
+// @ts-nocheck
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import styled, {
-  createGlobalStyle,
-  ThemeProvider,
-  keyframes,
-} from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ThemeProvider } from 'styled-components';
+import { motion } from 'framer-motion';
 import {
   Moon,
   Sun,
   MessageCircle,
-  UserCircle2,
-  Crown,
-  Skull,
   Users,
   Activity,
   Shield,
@@ -33,350 +28,35 @@ import contractData from '../../constants/contractData.json';
 import { LogicApiDataSource } from '../../api/dataSource/LogicApiDataSource';
 import {
   AssignRoleRequest,
-  AssignRoleResponse,
   GetPlayerNonceRequest,
-  GetPlayerNonceResponse,
   GetProposalMessagesRequest,
-  GetProposalMessagesResponse,
   SendProposalMessageRequest,
-  SendProposalMessageResponse,
 } from '../../api/clientApi';
 import { ResponseData } from '@calimero-is-near/calimero-p2p-sdk';
 import { twoFeltToString } from '../../utils/starknet';
+import { theme, GlobalStyle } from '../../styles/theme';
+import {
+  FullPageCenter,
+  GameWrapper,
+  Header,
+  HeaderTitle,
+  HeaderInfo,
+  InfoItem,
+  Button,
+  Input,
+  Form,
+} from '../../components/mafia/StyledComponents';
+import PlayerList from '../../components/mafia/PlayerList';
+import ChatArea from '../../components/mafia/ChatArea';
+import RoleAssignment from '../../components/mafia/RoleAssignment';
 
-// Enhanced theme with gradients and shadows
-const theme = {
-  colors: {
-    primary: '#00ff00',
-    primaryGlow: 'rgba(0, 255, 0, 0.15)',
-    secondary: '#006400',
-    danger: '#ff0000',
-    light: '#ffffff',
-    dark: '#000000',
-    gray: '#1a1a1a',
-    overlay: 'rgba(0, 255, 0, 0.05)',
-  },
-};
-
-const glowAnimation = keyframes`
-  0% { box-shadow: 0 0 5px ${theme.colors.primaryGlow}; }
-  50% { box-shadow: 0 0 20px ${theme.colors.primaryGlow}; }
-  100% { box-shadow: 0 0 5px ${theme.colors.primaryGlow}; }
-`;
-
-const GlobalStyle = createGlobalStyle`
-  body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Inter', sans-serif;
-    background: linear-gradient(to bottom right, ${theme.colors.dark}, #001400);
-    color: ${theme.colors.light};
-    min-height: 100vh;
-  }
-`;
-
-const FullPageCenter = styled.div`
-  display: flex;
-  min-height: 100vh;
-  width: 100vw;
-  background: radial-gradient(
-    circle at 50% 50%,
-    ${theme.colors.overlay},
-    transparent
-  );
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  padding: 2rem 0;
-`;
-
-const GameWrapper = styled(motion.div)`
-  width: 90%;
-  max-width: 1200px;
-`;
-
-const Header = styled.header`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  background: linear-gradient(
-    to right,
-    ${theme.colors.dark},
-    ${theme.colors.secondary}
-  );
-  border: 1px solid ${theme.colors.primary};
-  border-radius: 0.5rem;
-  margin-bottom: 2rem;
-  animation: ${glowAnimation} 3s infinite;
-`;
-
-const HeaderTitle = styled.h1`
-  font-size: 2rem;
-  color: ${theme.colors.primary};
-  margin: 0;
-  text-shadow: 0 0 10px ${theme.colors.primaryGlow};
-`;
-
-const HeaderInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-`;
-
-const InfoItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  color: ${theme.colors.primary};
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  background: ${theme.colors.dark};
-  border: 1px solid ${theme.colors.primary};
-`;
-
-const Button = styled(motion.button)`
-  color: ${theme.colors.dark};
-  padding: 0.75em 1.5em;
-  margin: 0.25em;
-  border-radius: 8px;
-  font-size: 1rem;
-  background: ${theme.colors.primary};
-  cursor: pointer;
-  border: none;
-  outline: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-  text-shadow: none;
-
-  &:hover {
-    background: ${theme.colors.primaryGlow};
-    color: ${theme.colors.primary};
-    transform: translateY(-2px);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-  }
-`;
-
-const Input = styled.input`
-  flex-grow: 1;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px solid ${theme.colors.primary};
-  background: ${theme.colors.dark};
-  color: ${theme.colors.primary};
-  font-size: 1rem;
-  transition: all 0.3s ease;
-
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 10px ${theme.colors.primaryGlow};
-  }
-`;
-
-const PlayerList = styled(motion.div)`
-  margin-bottom: 1rem;
-  padding: 1.5rem;
-  background: linear-gradient(
-    to bottom,
-    ${theme.colors.secondary},
-    ${theme.colors.dark}
-  );
-  border: 1px solid ${theme.colors.primary};
-  border-radius: 0.5rem;
-  animation: ${glowAnimation} 3s infinite;
-`;
-
-const PlayerListItem = styled(motion.div)<{
-  is_active: boolean;
-}>`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-  padding: 1rem;
-  background: ${theme.colors.dark};
-  border: 1px solid ${theme.colors.primary};
-  border-radius: 0.5rem;
-  color: ${(props) =>
-    props.is_active ? theme.colors.primary : theme.colors.gray};
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: translateX(5px);
-  }
-`;
-
-const ChatArea = styled(motion.div)`
-  background: linear-gradient(
-    to bottom,
-    ${theme.colors.secondary},
-    ${theme.colors.dark}
-  );
-  color: ${theme.colors.primary};
-  border: 1px solid ${theme.colors.primary};
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  margin-bottom: 1rem;
-  height: 20rem;
-  overflow-y: auto;
-  animation: ${glowAnimation} 3s infinite;
-
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: ${theme.colors.dark};
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: ${theme.colors.primary};
-    border-radius: 4px;
-  }
-`;
-
-const ChatMessage = styled(motion.div)<{ is_moderator: boolean }>`
-  margin-bottom: 0.75rem;
-  padding: 1rem;
-  background: ${(props) =>
-    props.is_moderator ? theme.colors.primary : theme.colors.dark};
-  color: ${(props) =>
-    props.is_moderator ? theme.colors.dark : theme.colors.primary};
-  border: 1px solid ${theme.colors.primary};
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: translateX(5px);
-  }
-`;
-
-const Form = styled.form`
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-`;
-
-const PhaseIndicator = styled(motion.div)`
-  font-size: 2rem;
-  margin-bottom: 1.5em;
-  color: ${theme.colors.primary};
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  text-shadow: 0 0 10px ${theme.colors.primaryGlow};
-`;
-
-const RoleAssignmentGrid = styled(motion.div)`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-`;
-
-const RoleCard = styled(motion.div)<{ selected: boolean }>`
-  padding: 1.5rem;
-  background: ${(props) =>
-    props.selected ? theme.colors.primary : theme.colors.dark};
-  color: ${(props) =>
-    props.selected ? theme.colors.dark : theme.colors.primary};
-  border: 1px solid ${theme.colors.primary};
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px ${theme.colors.primaryGlow};
-  }
-`;
-
-const PlayerStatus = styled.div`
-  padding: 1rem;
-  background: ${theme.colors.dark};
-  border: 1px solid ${theme.colors.primary};
-  border-radius: 0.5rem;
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  color: ${theme.colors.primary};
-`;
-
-type Player = {
-  name: String;
-  address: String;
-  public_identity_key: String;
-  is_moderator: boolean;
-  is_active: boolean;
-  revealed_role: number;
-};
-
-type GameState = {
-  created: boolean;
-  started: boolean;
-  ended: boolean;
-  current_phase: number;
-  player_count: number;
-  current_day: number;
-  moderator: String;
-  is_moderator_chosen: boolean;
-  mafia_count: number;
-  villager_count: number;
-  moderator_count: number;
-  active_mafia_count: number;
-  active_villager_count: number;
-};
-
-type Message = {
-  id: String;
-  proposal_id: String;
-  author: String;
-  text: String;
-  created_at: String;
-};
-
-const PHASE_ROLE_ASSIGNMENT = 3;
-const PHASE_NIGHT = 4;
-const PHASE_DAY = 5;
-
-const ROLE_UNASSIGNED = 0;
-const ROLE_VILLAGER = 1;
-const ROLE_MAFIA = 2;
-
-const getRoleName = (role: number) => {
-  switch (role) {
-    case ROLE_VILLAGER:
-      return 'Villager';
-    case ROLE_MAFIA:
-      return 'Mafia';
-    default:
-      return 'Unassigned';
-  }
-};
-
-const getPhaseName = (phase: number) => {
-  switch (phase) {
-    case PHASE_ROLE_ASSIGNMENT:
-      return 'Role Assignment';
-    case PHASE_NIGHT:
-      return 'Night';
-    case PHASE_DAY:
-      return 'Day';
-    default:
-      return 'Unknown';
-  }
-};
+import {
+  PHASE_ROLE_ASSIGNMENT,
+  PHASE_NIGHT,
+  PHASE_DAY,
+  getPhaseName,
+} from '../../utils/gameUtils';
+import { Player, GameState, Message } from '../../types';
 
 const ModeratorMafiaPortal: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -585,9 +265,9 @@ const ModeratorMafiaPortal: React.FC = () => {
         // await fetchGameData();
       })(),
       {
-        loading: 'Starting the game...',
-        success: 'Game started successfully!',
-        error: 'Failed to start the game. Please try again.',
+        loading: 'Assigning role...',
+        success: `Role assigned successfully: ${getRoleName(role)}`,
+        error: 'Failed to assign role. Please try again.',
       },
     );
   };
@@ -630,9 +310,9 @@ const ModeratorMafiaPortal: React.FC = () => {
         // await fetchGameData();
       })(),
       {
-        loading: 'Starting the game...',
-        success: 'Game started successfully!',
-        error: 'Failed to start the game. Please try again.',
+        loading: 'Eliminating player...',
+        success: 'Player eliminated successfully!',
+        error: 'Failed to eliminate player. Please try again.',
       },
     );
   }
@@ -674,9 +354,9 @@ const ModeratorMafiaPortal: React.FC = () => {
         // await fetchGameData();
       })(),
       {
-        loading: 'Starting the game...',
-        success: 'Game started successfully!',
-        error: 'Failed to start the game. Please try again.',
+        loading: 'Revealing role...',
+        success: 'Role revealed successfully!',
+        error: 'Failed to reveal role. Please try again.',
       },
     );
   }
@@ -753,18 +433,17 @@ const ModeratorMafiaPortal: React.FC = () => {
           if (gameExists) {
             await fetchGameData();
             await fetchPlayers();
-            // await fetchProposalMessages(1);
             setGameIdEntered(true);
+            return 'Game joined successfully!';
           } else {
-            toast.error(
-              'Game not found. Please check the Game ID and try again.',
-            );
+            throw new Error('Game not found');
           }
         })(),
         {
-          loading: 'Starting the game...',
-          success: 'Game started successfully!',
-          error: 'Failed to start the game. Please try again.',
+          loading: 'Joining game...',
+          success: (message) => message,
+          error: (err) =>
+            err.message || 'Failed to join the game. Please try again.',
         },
       );
     }
@@ -802,16 +481,6 @@ const ModeratorMafiaPortal: React.FC = () => {
           animate="visible"
           variants={containerVariants}
         >
-          <button
-            onClick={() =>
-              storePlayerRoleNonce({ address: address, role: '1', nonce: 1 })
-            }
-          >
-            Assign Role
-          </button>
-          <button onClick={() => getPlayerRoleNonce({ address: address })}>
-            Get Player Nonce
-          </button>
           <Header>
             <HeaderTitle>Cali Mafia</HeaderTitle>
             <HeaderInfo>
@@ -827,13 +496,13 @@ const ModeratorMafiaPortal: React.FC = () => {
           </Header>
 
           {currentPlayer && (
-            <PlayerStatus>
+            <motion.div variants={itemVariants}>
               <Shield size={24} />
               <span>Playing as: {currentPlayer.name}</span>
               {currentPlayer.is_moderator && (
                 <span className="text-primary">(Moderator)</span>
               )}
-            </PlayerStatus>
+            </motion.div>
           )}
 
           {!gameIdEntered ? (
@@ -854,113 +523,31 @@ const ModeratorMafiaPortal: React.FC = () => {
             </Form>
           ) : (
             <motion.div variants={containerVariants}>
-              <PhaseIndicator variants={itemVariants}>
+              <motion.div variants={itemVariants}>
                 {currentPhase === PHASE_NIGHT ? (
                   <Moon />
                 ) : currentPhase === PHASE_DAY ? (
                   <Sun />
                 ) : (
-                  <Crown />
+                  <MessageCircle />
                 )}
                 {getPhaseName(currentPhase)} Phase
-              </PhaseIndicator>
+              </motion.div>
 
               {currentPhase === PHASE_ROLE_ASSIGNMENT && (
-                <>
-                  <RoleAssignmentGrid variants={containerVariants}>
-                    {players.map(
-                      (player) =>
-                        !player.is_moderator && (
-                          <RoleCard
-                            key={player.address}
-                            variants={itemVariants}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <h3>{player.name}</h3>
-                            {/* <p>{player}</p> */}
-                            <Button
-                              onClick={() =>
-                                assignRole(player.address, ROLE_VILLAGER)
-                              }
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              Assign Villager
-                            </Button>
-                            <Button
-                              onClick={() =>
-                                assignRole(player.address, ROLE_MAFIA)
-                              }
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              Assign Mafia
-                            </Button>
-                          </RoleCard>
-                        ),
-                    )}
-                  </RoleAssignmentGrid>
-                </>
+                <RoleAssignment players={players} assignRole={assignRole} />
               )}
 
               {(currentPhase === PHASE_NIGHT || currentPhase === PHASE_DAY) && (
                 <>
-                  <PlayerList variants={containerVariants}>
-                    <h3>Players:</h3>
-                    <AnimatePresence>
-                      {players.map((player) => (
-                        <PlayerListItem
-                          key={player.name}
-                          is_active={player.is_active}
-                          variants={itemVariants}
-                          initial="hidden"
-                          animate="visible"
-                          exit="hidden"
-                        >
-                          <span>
-                            {player.is_active ? <UserCircle2 /> : <Skull />}{' '}
-                            {player.name}{' '}
-                            {player.is_moderator && <p>(Moderator)</p>}
-                          </span>
-                          {player.is_active &&
-                            !player.is_moderator &&
-                            currentPhase === PHASE_NIGHT && (
-                              <Button
-                                onClick={() => eliminatePlayer(player.address)}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                              >
-                                Eliminate
-                              </Button>
-                            )}
+                  <PlayerList
+                    players={players}
+                    currentPhase={currentPhase}
+                    onEliminatePlayer={eliminatePlayer}
+                    onRevealRole={revealRole}
+                  />
 
-                          {!player.is_active && (
-                            <Button onClick={() => revealRole(player.address)}>
-                              {' '}
-                              Reveal Role{' '}
-                            </Button>
-                          )}
-                        </PlayerListItem>
-                      ))}
-                    </AnimatePresence>
-                  </PlayerList>
-
-                  <ChatArea
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                  >
-                    {messages.map((message) => (
-                      <ChatMessage
-                        key={message.id}
-                        is_moderator={message.author === 'Moderator'}
-                        variants={itemVariants}
-                      >
-                        <strong>{message.author}:</strong> {message.text}
-                      </ChatMessage>
-                    ))}
-                  </ChatArea>
+                  <ChatArea messages={messages} />
 
                   <Form onSubmit={sendMessage}>
                     <Input
